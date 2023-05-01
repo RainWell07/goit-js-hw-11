@@ -1,37 +1,42 @@
-// FETCH
-import axios from "axios";
 import Notiflix from "notiflix";
-import SimpleLightbox from 'simplelightbox';
-import 'simplelightbox/dist/simple-lightbox.min.css';
+import { lightbox } from "./js/lightbox";
+
+// API FETCH \\
+import axios from "axios";
 const API_KEY = "35883602-c1dbd6afe8bcf07d5100778d4";
 const BASE_URL = "https://pixabay.com/api/";
-
 const fetchImages = async (query, page, perPage = 40) => {
   const url = `${BASE_URL}?key=${API_KEY}&q=${query}&image_type=photo&orientation=horizontal&safesearch=true&page=${page}&per_page=${perPage}`;
   try {
     const response = await axios.get(url);
     if (response.data.hits.length > 0) {
-    return response.data.hits.map((hit) => ({
-    webformatURL: hit.webformatURL,
-    largeImageURL: hit.largeImageURL,
-    tags: hit.tags,
-    likes: hit.likes,
-    views: hit.views,
-    comments: hit.comments,
-    downloads: hit.downloads,
-      }));} 
-      
-  else {
-    Notiflix.Notify.failure("Sorry, there are no images matching your search query. Please try again.");
-    return [];
-    }}
-  catch (error) {
-  console.log(error);
+      const totalHits = response.data.totalHits;
+      if (page === 1) {
+        Notiflix.Notify.success(`Hooray! We found ${totalHits} images.`);
+      }
+      return response.data.hits.map((hit) => ({
+        webformatURL: hit.webformatURL,
+        largeImageURL: hit.largeImageURL,
+        tags: hit.tags,
+        likes: hit.likes,
+        views: hit.views,
+        comments: hit.comments,
+        downloads: hit.downloads,
+      }));
+    } else {
+      moreImages = false;
+      Notiflix.Notify.failure("Sorry, there are no images matching your search query. Please try again.");
+      return [];
+    }
+  } catch (error) {
+    console.log(error);
   }
 };
-// 
+// API FETCH \\ 
 
-// РОЗМІТКА 
+
+
+// РОЗМІТКА \\
 const searchForm = document.querySelector('#search-form');
 const gallery = document.querySelector('.gallery');
 let page = 1;
@@ -39,12 +44,7 @@ const perPage = 40;
 let currentQuery = '';
 let isLoading = false;
 
-const lightbox = new SimpleLightbox('.gallery a', {
-  captions: true,
-  captionDelay: 250,
-});
-
-
+// СТВОРЕННЯ РОЗМІТКИ
 const createImageCard = (image) => {
   const card = document.createElement('div');
   const imageEl = document.createElement('img');
@@ -88,15 +88,22 @@ const createImageCard = (image) => {
 };
 
 
+// РЕНДЕР РОЗМІТКИ В DOM
 const renderImageCards = (images) => {
   const cards = images.map((image) => createImageCard(image));
   gallery.append(...cards);
   lightbox.refresh()
 };
+const load = document.querySelector(".find-button");
+load.addEventListener("click", () => {
+  moreImages = true;
+});
 
 
+// НЕСКІНЧЕННИЙ ТА ПЛАВНИЙ СКРОЛЛ
+let moreImages = true;
 const loadMoreImages = async () => {
-  if (isLoading) {
+  if (!moreImages || isLoading) {
     return;
   }
   isLoading = true;
@@ -104,7 +111,7 @@ const loadMoreImages = async () => {
     page += 1;
     const images = await fetchImages(currentQuery, page, perPage);
     if (images.length > 0) {
-    renderImageCards(images);
+      renderImageCards(images);
     }
   } catch (error) {
     console.log(error);
@@ -113,10 +120,11 @@ const loadMoreImages = async () => {
   }
   const { height: cardHeight } = gallery.firstElementChild.getBoundingClientRect();
   window.scrollBy({
-  top: cardHeight * 2,
-  behavior: "smooth",
-});
+    top: cardHeight * 2,
+    behavior: "smooth",
+  });
 };
+
 
 searchForm.addEventListener('submit', async (event) => {
   event.preventDefault();
